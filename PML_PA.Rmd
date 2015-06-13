@@ -1,0 +1,36 @@
+---
+title: "PML_PA"
+author: "Aneesh Sathe"
+date: "June 13, 2015"
+output: html_document
+---
+
+```{r load libraries}
+library(data.table)
+library(ggplot2)
+
+```
+
+
+
+
+```{r Read Data, cache=TRUE}
+
+pro_in_dat=read.csv("pml-training.csv",nrows =2)
+head(pro_in_dat)
+
+keywords=c("X","user_name","min","max","amplitude","window","kurtosis","user","*timestamp*","*skewness*","var","avg","stddev")
+strings=colnames(pro_in_dat)
+# colnames(pro_in_dat)[!apply(sapply(keywords, grepl, strings, ignore.case=TRUE),1,any)]
+
+mat=apply(sapply(keywords, grepl, strings, ignore.case=TRUE),1,any)
+mat[mat]="NULL"
+mat[mat==FALSE]=NA
+
+
+pro_in_dat=read.csv("pml-training.csv",colClasses = mat)
+levels(pro_in_dat$classe)
+```
+
+
+You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases. 
