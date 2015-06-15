@@ -4,6 +4,12 @@ author: "Aneesh Sathe"
 date: "June 13, 2015"
 output: html_document
 ---
+```{r}
+# install.packages("ggplot2")
+# install.packages("caret")
+# install.packages("doParallel")
+# install.packages("GGally")
+```
 
 ```{r load libraries}
 library(data.table)
@@ -31,9 +37,7 @@ mat[mat==FALSE]=NA
 
 pro_in_dat=read.csv("pml-training.csv",colClasses = mat)
 levels(pro_in_dat$classe)
-```
 
-```{r}
 inTrain <- createDataPartition(y=pro_in_dat$classe,p=0.7, list=FALSE)
 training <- pro_in_dat[inTrain,]
 # pred_training <- pro_in_dat[inTrain,41]
@@ -43,39 +47,41 @@ testing <- pro_in_dat[-inTrain,]
 
 
 ```{r}
-library(GGally)
-ggpairs(pro_in_dat,colour='classe')
+# library(GGally)
+# ggpairs(pro_in_dat,colour='classe')
 ```
 
 
 
 ```{r CenterScale}
-CS_dat=preProcess(pro_in_dat[,1:40], method=c("center", "scale"))
+# CS_dat=preProcess(pro_in_dat[,1:40], method=c("center", "scale"))
 ```
 
 
 ```{r PCA}
-pr=prcomp(pro_in_dat[,1:40])
-#### TO DETERMINE WHICH PC TO USE
-screeplot(pr,type="lines")
+# pr=prcomp(pro_in_dat[,1:40])
+# #### TO DETERMINE WHICH PC TO USE
+# screeplot(pr,type="lines")
 ```
 
 ```{r PCAGraph}
-typeColor <- ((pro_in_dat$classe=="A")*1 + 1)
-plot(pr$x[,2],pr$x[,3],col=typeColor,xlab="PC1",ylab="PC2")
+# typeColor <- ((pro_in_dat$classe=="A")*1 + 1)
+# plot(pr$x[,2],pr$x[,3],col=typeColor,xlab="PC1",ylab="PC2")
 ```
 
 ```{r ZeroVar}
-nearZeroVar(pro_in_dat[,1:40],saveMetrics=TRUE)
+# nearZeroVar(pro_in_dat[,1:40],saveMetrics=TRUE)
 ```
 ```{r}
-qplot(magnet,colour=classe,data=pro_in_dat,geom = "density")
+# qplot(magnet,colour=classe,data=pro_in_dat,geom = "density")
 ```
 
 
 
 ```{r RandomForest}
-cl <- makePSOCKcluster(2)
+
+# cl=makeForkCluster(nnodes = getOption("mc.cores", 2L))
+cl <- makePSOCKcluster()
 registerDoParallel(cl)
 ctrl <- trainControl(preProcOptions = list(pcaComp=4))
 modFit=train(classe~.,data=training, method="rf",prox=TRUE,preProcess=c("pca"),trControl = ctrl)
