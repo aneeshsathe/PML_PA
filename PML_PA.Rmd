@@ -1,34 +1,47 @@
 ---
-title: "PML_PA"
+title: "Practical Machine Learning Project"
 author: "Aneesh Sathe"
 date: "June 13, 2015"
 output: html_document
 ---
-```{r}
-# install.packages("ggplot2")
-# install.packages("caret")
-# install.packages("doParallel")
-# install.packages("GGally")
-```
+##Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har) (see the section on the Weight Lifting Exercise Dataset). 
+
+## Data
+The training data for this project are available here: 
+
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+
+The test data are available here: 
+
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+
+The data for this project come from this source: [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har).
+
+
+##Steps in generating the model
+1. Select Variables  
+2. Create test and training sets  
+3. Train model  
+4. Test accuracy and out of sample error.  
+
 
 ```{r load libraries}
-library(data.table)
 library(ggplot2)
 library(caret)
-library(doParallel)
 ```
  
-
+##Data reading and cleaning
+The data was read and all the uimportant variables were removed. The tidy dataset was then partitioned into testing and training sets. Of these the training set was used for training the model.  
 
 
 ```{r Read Data, cache=TRUE}
 
 pro_in_dat=read.csv("pml-training.csv",nrows =2)
-head(pro_in_dat)
 
 keywords=c("X","user_name","min","max","amplitude","window","kurtosis","user","*timestamp*","*skewness*","var","avg","stddev")
 strings=colnames(pro_in_dat)
-# colnames(pro_in_dat)[!apply(sapply(keywords, grepl, strings, ignore.case=TRUE),1,any)]
 
 mat=apply(sapply(keywords, grepl, strings, ignore.case=TRUE),1,any)
 mat[mat]="NULL"
@@ -36,94 +49,81 @@ mat[mat==FALSE]=NA
 
 
 pro_in_dat=read.csv("pml-training.csv",colClasses = mat)
-levels(pro_in_dat$classe)
 
 inTrain <- createDataPartition(y=pro_in_dat$classe,p=0.7, list=FALSE)
 training <- pro_in_dat[inTrain,]
-# pred_training <- pro_in_dat[inTrain,41]
+
 testing <- pro_in_dat[-inTrain,]
-# pred_test <- pro_in_dat[inTrain,41]
 ```
+
+After selecting appropriate columns we further check variables with zero or near zero variance are part of the selection. 
+```{r}
+nearZeroVar(testing[,1:40],saveMetrics=TRUE)
+
+```
+None of the variables selected have zero/near-zero variance. We apply random forest fitting.  
+
+
+```{r RandomForest,eval=FALSE}
+
+modFit=randomForest(classe~.,data=training, ntree=500)
+```
+
+
+```{r echo=FALSE,results='hide'}
+library(randomForest)
+load("rand_forest_formula.RData")
+```
+
+
+#Validation
+
+##Accuracy of training set
 
 
 ```{r}
-# library(GGally)
-# ggpairs(pro_in_dat,colour='classe')
+pred_tr=predict(modFit,training[,1:40])
+confusionMatrix(pred_tr,training$classe)
 ```
+As the accuracy here is 1, there is a fear that there might be overfitting. 
 
 
-
-```{r CenterScale}
-# CS_dat=preProcess(pro_in_dat[,1:40], method=c("center", "scale"))
-```
-
-
-```{r PCA}
-# pr=prcomp(pro_in_dat[,1:40])
-# #### TO DETERMINE WHICH PC TO USE
-# screeplot(pr,type="lines")
-```
-
-```{r PCAGraph}
-# typeColor <- ((pro_in_dat$classe=="A")*1 + 1)
-# plot(pr$x[,2],pr$x[,3],col=typeColor,xlab="PC1",ylab="PC2")
-```
-
-```{r ZeroVar}
-# nearZeroVar(pro_in_dat[,1:40],saveMetrics=TRUE)
-```
+##Measuring out of sample error
+Next we measure the accuracy of the test set. 
 ```{r}
-# qplot(magnet,colour=classe,data=pro_in_dat,geom = "density")
+pred_out=predict(modFit,testing[,1:40])
+confusionMatrix(pred_out,testing$classe)
 ```
 
 
+Just to see which of the variables were the most important in this model we use the varImpPlot() function.   
 
-```{r RandomForest}
-
-# cl=makeForkCluster(nnodes = getOption("mc.cores", 2L))
-cl <- makePSOCKcluster()
-registerDoParallel(cl)
-ctrl <- trainControl(preProcOptions = list(pcaComp=4))
-modFit=train(classe~.,data=training, method="rf",prox=TRUE,preProcess=c("pca"),trControl = ctrl)
-stopCluster(cl)
-modFit
-
+```{r}
+varImpPlot(modFit)
 ```
 
+As the plot shows the roll_belt variable is quite important.
+
+##Conclusion
+The model performs well with cross validation accuracy is 99.34% and **out of sample error as 0.66%.**  
+
+The generated model can thus be used on external data. 
 
 
+```{r }
+cs_testing=read.csv("pml-testing.csv",colClasses = mat)
+cs_pred_out=predict(modFit,cs_testing[,1:40])
+cs_pred_out
+```
+The answers generated are then submitted to Coursera by generating the files using the provided function below.
+```{r eval=FALSE}
 
+pml_write_files = function(x){
+        n = length(x)
+        for(i in 1:n){
+                filename = paste0("problem_id_",i,".txt")
+                write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+        }
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases. 
+```
